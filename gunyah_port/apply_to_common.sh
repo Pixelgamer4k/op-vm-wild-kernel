@@ -34,11 +34,18 @@ if [[ -f "$DEFCONFIG" ]]; then
   echo "# --- op-vm Gunyah AVF port ---" >> "$DEFCONFIG"
   # Convert CONFIG_FOO=y lines; gki_defconfig uses KEY=value
   grep '^CONFIG_' "$PORT_ROOT/gunyah_avf.config" >> "$DEFCONFIG" || true
-  # Dependencies often needed
-  for cfg in CONFIG_MAILBOX=y CONFIG_AUXILIARY_BUS=y CONFIG_QCOM_SCM=y CONFIG_QCOM_MDT_LOADER=y; do
+  # Dependencies often needed (VIRT_DRIVERS gates drivers/virt/ entirely)
+  for cfg in CONFIG_VIRT_DRIVERS=y CONFIG_MAILBOX=y CONFIG_AUXILIARY_BUS=y CONFIG_QCOM_SCM=y CONFIG_QCOM_MDT_LOADER=y; do
     key=${cfg%%=*}
-    grep -q "^$key=" "$DEFCONFIG" || echo "$cfg" >> "$DEFCONFIG"
+    sed -i "/^# ${key} is not set$/d; /^${key}=/d" "$DEFCONFIG"
+    echo "$cfg" >> "$DEFCONFIG"
   done
+fi
+
+# Hard fail if the virt gate is missing — otherwise Gunyah configs are inert.
+if [[ -f "$DEFCONFIG" ]] && ! grep -q '^CONFIG_VIRT_DRIVERS=y$' "$DEFCONFIG"; then
+  echo "ERROR: CONFIG_VIRT_DRIVERS=y missing from $DEFCONFIG after Gunyah apply" >&2
+  exit 1
 fi
 
 echo "Gunyah port applied."
