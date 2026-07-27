@@ -92,10 +92,15 @@ runs:
       env:
         ACTION_REPO_VAL: ${{ github.action_repository }}
         ACTION_REF_VAL: ${{ github.action_ref }}
+        FALLBACK_REPO: ${{ github.repository }}
+        FALLBACK_REF: ${{ github.ref_name }}
       run: |
         set -euo pipefail
-        echo "ACTION_REPO=$ACTION_REPO_VAL" >> $GITHUB_ENV
-        echo "ACTION_REF=$ACTION_REF_VAL" >> $GITHUB_ENV
+        # Local path actions (uses: ./...) leave action_repository empty.
+        ACTION_REPO="${ACTION_REPO_VAL:-$FALLBACK_REPO}"
+        ACTION_REF="${ACTION_REF_VAL:-$FALLBACK_REF}"
+        echo "ACTION_REPO=$ACTION_REPO" >> $GITHUB_ENV
+        echo "ACTION_REF=$ACTION_REF" >> $GITHUB_ENV
 
     - name: 📥 Checkout Code
       uses: actions/checkout@v6
@@ -709,6 +714,11 @@ runs:
       run: |
         echo "::group::Check ccache"
         set -euo pipefail
+
+        # Workflow must set CCACHE_DIR; fall back so set -u does not abort.
+        : "${CCACHE_DIR:=${GITHUB_WORKSPACE}/.ccache}"
+        mkdir -p "$CCACHE_DIR"
+        echo "CCACHE_DIR=$CCACHE_DIR" >> "$GITHUB_ENV"
         
         echo "/usr/lib/ccache" >> $GITHUB_PATH
         
@@ -722,7 +732,7 @@ runs:
           ccache -s | head -n 20
           
           echo "Updating atime to achive cache eviction"
-          find ${{ env.CCACHE_DIR }} -type f -exec touch -t $(date -d "1 day ago" +%Y%m%d%H%M) {} +
+          find "$CCACHE_DIR" -type f -exec touch -t $(date -d "1 day ago" +%Y%m%d%H%M) {} +
         else
           echo "⚠️ No existing cache - building from scratch"
           echo "Cache will be populated for future builds"
