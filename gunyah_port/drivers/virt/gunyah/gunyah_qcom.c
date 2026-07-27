@@ -4,6 +4,7 @@
  */
 
 #include <linux/arm-smccc.h>
+#include <linux/bits.h>
 #include <linux/gunyah_rsc_mgr.h>
 #include <linux/module.h>
 #include <linux/qcom_scm.h>
@@ -27,7 +28,8 @@ static void qcom_scm_gh_pin_pages(phys_addr_t phys_addr, size_t size)
 static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_parcel)
 {
 	struct qcom_scm_vmperm *new_perms;
-	u64 src, src_cpy;
+	/* Android 5.15 qcom_scm_assign_mem() takes unsigned int *src, not u64 *. */
+	unsigned int src, src_cpy;
 	int ret = 0, i, n, rb_ret;
 	u16 vmid;
 
@@ -49,7 +51,7 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 			new_perms[n].perm |= QCOM_SCM_PERM_READ;
 	}
 
-	src = BIT_ULL(QCOM_SCM_VMID_HLOS);
+	src = BIT(QCOM_SCM_VMID_HLOS);
 
 	for (i = 0; i < mem_parcel->n_mem_entries; i++) {
 		src_cpy = src;
@@ -67,9 +69,9 @@ static int qcom_scm_gh_rm_pre_mem_share(void *rm, struct gh_rm_mem_parcel *mem_p
 	for (n = 0; n < mem_parcel->n_acl_entries; n++) {
 		vmid = le16_to_cpu(mem_parcel->acl_entries[n].vmid);
 		if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
-			src |= BIT_ULL(vmid);
+			src |= BIT(vmid);
 		else
-			src |= BIT_ULL(QCOM_SCM_RM_MANAGED_VMID);
+			src |= BIT(QCOM_SCM_RM_MANAGED_VMID);
 	}
 
 	new_perms[0].vmid = QCOM_SCM_VMID_HLOS;
@@ -100,7 +102,7 @@ out:
 static int qcom_scm_gh_rm_post_mem_reclaim(void *rm, struct gh_rm_mem_parcel *mem_parcel)
 {
 	struct qcom_scm_vmperm new_perms;
-	u64 src = 0, src_cpy;
+	unsigned int src = 0, src_cpy;
 	int ret = 0, i, n;
 	u16 vmid;
 
@@ -110,9 +112,9 @@ static int qcom_scm_gh_rm_post_mem_reclaim(void *rm, struct gh_rm_mem_parcel *me
 	for (n = 0; n < mem_parcel->n_acl_entries; n++) {
 		vmid = le16_to_cpu(mem_parcel->acl_entries[n].vmid);
 		if (vmid <= QCOM_SCM_MAX_MANAGED_VMID)
-			src |= (1ull << vmid);
+			src |= BIT(vmid);
 		else
-			src |= (1ull << QCOM_SCM_RM_MANAGED_VMID);
+			src |= BIT(QCOM_SCM_RM_MANAGED_VMID);
 	}
 
 	for (i = 0; i < mem_parcel->n_mem_entries; i++) {
