@@ -15,6 +15,13 @@ cp "$PORT_ROOT/include/linux/"*.h "$COMMON/include/linux/"
 cp "$PORT_ROOT/include/uapi/linux/"*.h "$COMMON/include/uapi/linux/"
 cp "$PORT_ROOT/arch/arm64/include/asm/gunyah.h" "$COMMON/arch/arm64/include/asm/"
 
+# Vendor headers needed by legacy qgunyah loader; GKI common lacks them.
+# secure_buffer.h provides hyp_assign_* stubs unless CONFIG_QCOM_SECURE_BUFFER=y.
+if [[ -d "$PORT_ROOT/include/soc/qcom" ]]; then
+  mkdir -p "$COMMON/include/soc/qcom"
+  cp -a "$PORT_ROOT/include/soc/qcom/." "$COMMON/include/soc/qcom/"
+fi
+
 # Ensure virt/Makefile builds gunyah
 if [[ -f "$COMMON/drivers/virt/Makefile" ]]; then
   if ! grep -q 'gunyah' "$COMMON/drivers/virt/Makefile"; then
