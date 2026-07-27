@@ -51,6 +51,11 @@ if [[ -f "$DEFCONFIG" ]]; then
     sed -i "/^# ${key} is not set$/d; /^${key}=/d" "$DEFCONFIG"
     echo "$cfg" >> "$DEFCONFIG"
   done
+  # Force-disable legacy loader on GKI (missing vendor APIs / trace headers)
+  for key in CONFIG_GH_SECURE_VM_LOADER CONFIG_GH_PROXY_SCHED CONFIG_GH_VIRT_WATCHDOG; do
+    sed -i "/^# ${key} is not set$/d; /^${key}=/d" "$DEFCONFIG"
+    echo "# ${key} is not set" >> "$DEFCONFIG"
+  done
 fi
 
 # Hard fail if the virt gate is missing — otherwise Gunyah configs are inert.
