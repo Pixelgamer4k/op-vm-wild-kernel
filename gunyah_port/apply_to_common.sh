@@ -14,6 +14,10 @@ cp -a "$PORT_ROOT/include/linux/gunyah/." "$COMMON/include/linux/gunyah/"
 cp "$PORT_ROOT/include/linux/"*.h "$COMMON/include/linux/"
 cp "$PORT_ROOT/include/uapi/linux/"*.h "$COMMON/include/uapi/linux/"
 cp "$PORT_ROOT/arch/arm64/include/asm/gunyah.h" "$COMMON/arch/arm64/include/asm/"
+if [[ -d "$PORT_ROOT/arch/arm64/include/asm/gunyah" ]]; then
+  mkdir -p "$COMMON/arch/arm64/include/asm/gunyah"
+  cp -a "$PORT_ROOT/arch/arm64/include/asm/gunyah/." "$COMMON/arch/arm64/include/asm/gunyah/"
+fi
 
 # Vendor headers needed by legacy qgunyah loader; GKI common lacks them.
 # secure_buffer.h provides hyp_assign_* stubs unless CONFIG_QCOM_SECURE_BUFFER=y.
