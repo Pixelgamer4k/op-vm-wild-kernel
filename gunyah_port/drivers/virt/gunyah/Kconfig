@@ -1,0 +1,99 @@
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Merged Kconfig: SM8550 OEM Gunyah helpers + SM8650-style AVF /dev/gunyah
+
+config GUNYAH
+	tristate "Gunyah Virtualization drivers (AVF / crosvm)"
+	depends on ARM64
+	depends on MAILBOX
+	select GUNYAH_PLATFORM_HOOKS
+	select AUXILIARY_BUS
+	imply GUNYAH_QCOM_PLATFORM if ARCH_QCOM
+	help
+	  Modern Gunyah VM manager exposing /dev/gunyah with the AVF UAPI
+	  (ioctl type 'G'). Required for Android Virtualization Framework
+	  crosvm on Qualcomm platforms.
+
+	  Say Y/M here to enable AVF-compatible Gunyah support.
+
+config GUNYAH_PLATFORM_HOOKS
+	tristate
+
+config GUNYAH_QCOM_PLATFORM
+	tristate "Support for Gunyah on Qualcomm platforms"
+	depends on GUNYAH
+	select GUNYAH_PLATFORM_HOOKS
+	select QCOM_SCM
+	help
+	  Extra platform support for Gunyah on Qualcomm SoCs.
+
+config GUNYAH_VCPU
+	tristate "Runnable Gunyah vCPUs"
+	depends on GUNYAH
+	help
+	  Host-scheduled vCPUs for Gunyah VMMs (crosvm).
+
+config GUNYAH_IRQFD
+	tristate "Gunyah irqfd interface"
+	depends on GUNYAH
+
+config GUNYAH_IOEVENTFD
+	tristate "Gunyah ioeventfd interface"
+	depends on GUNYAH
+
+config GH_SECURE_VM_LOADER
+	tristate "Gunyah Secure Virtual Machine Loader Driver"
+	select QCOM_MDT_LOADER
+	help
+	  Legacy secure guest VM loader. On this port it registers
+	  /dev/qgunyah (ioctl type 0xB2) so OEM TUI/OEMVM keep working
+	  while /dev/gunyah is reserved for AVF.
+
+config GH_PROXY_SCHED
+	tristate "PROXY Scheduling for Secondary VMs"
+	depends on GH_SECURE_VM_LOADER
+	help
+	  Proxy scheduler used by the secure VM loader path.
+
+menuconfig GUNYAH_DRIVERS
+	bool "Gunyah Virtualization helper drivers"
+	depends on ARM64
+	help
+	  Helper interfaces for Gunyah environments (doorbell, msgq, RM, etc).
+
+	  Say Y here to enable the drivers needed to work on Gunyah
+	  virtualization environment.
+
+if GUNYAH_DRIVERS
+
+config GH_VIRT_WATCHDOG
+	tristate "Gunyah Virtual Watchdog Driver"
+	depends on QCOM_WDT_CORE
+
+config GH_CTRL
+	tristate "Create Gunyah entries under /sys/hypervisor"
+	depends on SYSFS
+	select SYS_HYPERVISOR
+
+config GH_DBL
+	tristate "Gunyah Doorbell driver"
+
+config GH_MSGQ
+	tristate "Gunyah Message Queue driver"
+
+config GH_RM_DRV
+	tristate "Gunyah Resource Manager driver"
+
+config GH_IRQ_LEND
+	tristate "Gunyah IRQ Lending Framework"
+	depends on GH_RM_DRV
+
+config GH_MEM_NOTIFIER
+	tristate "Gunyah Memory Resource Notification Framework"
+	depends on GH_RM_DRV
+
+config GH_GUEST_POPS
+	tristate "Gunyah Guest Power-Operations driver"
+	depends on GH_RM_DRV
+
+endif

@@ -1,0 +1,117 @@
+name: Build OP12r A16 Gunyah AVF
+
+permissions:
+  contents: write
+  actions: write
+
+on:
+  workflow_dispatch:
+    inputs:
+      make_release:
+        description: 'Create a GitHub release'
+        type: boolean
+        default: true
+      optimize_level:
+        type: choice
+        options: [O2, O3]
+        default: O2
+      clean_build:
+        type: boolean
+        default: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 480
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 1
+
+      - name: Emergency Disk Cleanup
+        uses: ./.github/actions/disk-cleanup
+
+      - name: Install dependencies
+        run: |
+          set -euo pipefail
+          sudo apt-get -o Acquire::Retries=3 update -qq
+          sudo DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+            git curl ca-certificates build-essential clang lld flex bison \
+            libelf-dev libssl-dev libncurses-dev zlib1g-dev liblz4-tool \
+            libxml2-utils rsync unzip dwarves file python3 ccache jq bc dos2unix kmod libdw-dev elfutils pigz
+          sudo apt-get clean
+
+      - name: Load OP12r A16 config
+        id: cfg
+        shell: bash
+        run: |
+          set -euo pipefail
+          CFG=$(jq -c '.' configs/a16/OP12r.json)
+          echo "config=$CFG" >> "$GITHUB_OUTPUT"
+          echo "$CFG" | jq .
+
+      - name: Build kernel
+        id: build
+        uses: ./.github/actions/build-kernel
+        with:
+          op_config_json: ${{ steps.cfg.outputs.config }}
+          ksu_type: KSUN
+          ksu_branch_or_hash: dev
+          optimize_level: ${{ inputs.optimize_level }}
+          clean: ${{ inputs.clean_build }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          debug: true
+
+      - name: Collect outputs
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p release_out
+          echo "image_sha=${{ steps.build.outputs.image_sha256 }}"
+          echo "zip_sha=${{ steps.build.outputs.zip_sha256 }}"
+          echo "zip_name=${{ steps.build.outputs.zip_name }}"
+          find . -type f \( -name 'AK3_*.zip' -o -name '*OP12r*.zip' -o -name '*AnyKernel*.zip' \) -print
+          # Prefer reported zip if present
+          if [[ -n "${{ steps.build.outputs.zip_name }}" ]]; then
+            find . -name "${{ steps.build.outputs.zip_name }}" -exec cp {} release_out/ \; || true
+          fi
+          find . -type f \( -name 'AK3_*.zip' -o -name '*OP12r*.zip' \) -exec cp -n {} release_out/ \; || true
+          find . -type d -name artifacts | while read -r d; do cp -n "$d"/* release_out/ 2>/dev/null || true; done
+          ls -lah release_out || true
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v7
+        with:
+          name: OP12r-A16-Gunyah-AVF
+          path: release_out/
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Create release
+        if: ${{ inputs.make_release && success() }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          TAG="gunyah-avf-12r-$(date -u +%Y%m%d-%H%M%S)"
+          if ! compgen -G 'release_out/*' > /dev/null; then
+            echo "No files to release"
+            exit 1
+          fi
+          gh release create "$TAG" release_out/* \
+            --title "OP12r A16 Gunyah AVF $TAG" \
+            --notes "$(cat <<'N'
+          Custom WildKernels-based build for OnePlus 12R / CPH2585 (OOS16) with SM8650-style Gunyah AVF port.
+
+          - Modern /dev/gunyah (ioctl type G / 0x4700) built into Image
+          - OEM secure path on /dev/qgunyah
+          - Stock vendor gunyah.ko blacklisted
+
+          Flash the AnyKernel3 zip with Kernel Flasher. Keep a stock/Wild boot backup.
+          After boot run gate_test: crosvm should no longer log Invalid gunyah dev ioctl 0x4700.
+          N
+          )"

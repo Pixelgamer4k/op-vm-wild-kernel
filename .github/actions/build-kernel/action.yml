@@ -379,6 +379,18 @@ runs:
         DEBUG_ZIP_NAME="debug_${OP_MODEL}_${OP_OS_VERSION}.zip"
         echo "DEBUG_ZIP_NAME=$DEBUG_ZIP_NAME" >> "$GITHUB_ENV"
 
+    - name: Apply op-vm Gunyah AVF port (SM8550)
+      shell: bash
+      run: |
+        set -euo pipefail
+        echo "::group::Gunyah AVF port"
+        bash "$GITHUB_WORKSPACE/gunyah_port/apply_to_common.sh" "$COMMON_KERNEL_FOLDER"
+        # Also try msm-kernel if present and has drivers/virt
+        if [[ -d "$MSM_KERNEL_FOLDER/drivers/virt" ]]; then
+          bash "$GITHUB_WORKSPACE/gunyah_port/apply_to_common.sh" "$MSM_KERNEL_FOLDER" || true
+        fi
+        echo "::endgroup::"
+
     - name: Set Kernel build-tools to Path
       shell: bash
       run: |
