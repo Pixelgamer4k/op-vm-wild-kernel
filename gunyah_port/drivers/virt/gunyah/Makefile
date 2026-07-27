@@ -12,7 +12,7 @@ gunyah_loader-$(CONFIG_GH_PROXY_SCHED) += gh_proxy_sched.o
 CFLAGS_gh_secure_vm_virtio_backend.o = -DDYNAMIC_DEBUG_MODULE
 
 # --- Modern AVF Gunyah (crosvm / Android virt) ---
-gunyah-y += rsc_mgr.o rsc_mgr_rpc.o vm_mgr.o vm_mgr_mm.o
+gunyah-y += rsc_mgr.o rsc_mgr_rpc.o vm_mgr.o vm_mgr_mm.o gunyah_hypercall.o gunyah_msgq_mbox.o
 obj-$(CONFIG_GUNYAH) += gunyah.o
 
 obj-$(CONFIG_GUNYAH_PLATFORM_HOOKS) += gunyah_platform_hooks.o
