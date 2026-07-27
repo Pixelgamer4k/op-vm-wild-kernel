@@ -13,6 +13,8 @@
 
 #include <uapi/linux/gunyah.h>
 
+#include "gh_compat.h"
+
 struct gh_ioeventfd {
 	struct gh_vm_function_instance *f;
 	struct gh_vm_io_handler io_handler;

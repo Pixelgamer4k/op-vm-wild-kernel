@@ -11,6 +11,7 @@
 #include <uapi/linux/gunyah.h>
 
 #include "vm_mgr.h"
+#include "gh_compat.h"
 
 static bool pages_are_mergeable(struct page *a, struct page *b)
 {

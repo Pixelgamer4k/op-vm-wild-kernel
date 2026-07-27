@@ -20,14 +20,7 @@
 #include <uapi/linux/gunyah.h>
 
 #include "vm_mgr.h"
-
-/* 5.15 GKI lacks overflows_type(); keep a local fallback. */
-#ifndef overflows_type
-#define overflows_type(n, type) ({			\
-	typeof(n) __n = (n);				\
-	(__n) != (type)(__n);				\
-})
-#endif
+#include "gh_compat.h"
 
 static void gh_vm_free(struct work_struct *work);
 
