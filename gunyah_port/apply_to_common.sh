@@ -3,6 +3,11 @@ set -euo pipefail
 COMMON="${1:?common kernel dir}"
 PORT_ROOT="$(cd "$(dirname "$0")" && pwd)"
 
+if [[ -f "$PORT_ROOT/SKIP_APPLY" ]] || [[ "${OPVM_SKIP_GUNYAH:-}" == "1" ]]; then
+  echo "SKIP: Gunyah AVF port apply disabled (control / safe boot build)"
+  exit 0
+fi
+
 echo "Applying Gunyah AVF port into $COMMON"
 mkdir -p "$COMMON/drivers/virt/gunyah"
 mkdir -p "$COMMON/include/linux/gunyah"
