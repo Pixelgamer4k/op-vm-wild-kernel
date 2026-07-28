@@ -839,8 +839,29 @@ static int gh_msgq_platform_probe_direction(struct platform_device *pdev, bool t
 static int gh_identify(void)
 {
 	struct gh_hypercall_hyp_identify_resp gh_api;
+	struct device_node *hyp;
+	static const char * const comps[] = {
+		"qcom,gunyah-hypervisor-1.0",
+		"qcom,gunyah-hypervisor",
+		"qcom,haven-hypervisor",
+	};
+	int i;
+	bool dt_ok = false;
 
-	if (!arch_is_gh_guest())
+	/*
+	 * Skip arch_is_gh_guest() (SMCCC Call UID). That query hard-resets
+	 * some Qualcomm SM8550 firmwares when issued early at boot.
+	 * Presence of the Gunyah hypervisor DT node is sufficient here.
+	 */
+	for (i = 0; i < ARRAY_SIZE(comps); i++) {
+		hyp = of_find_compatible_node(NULL, NULL, comps[i]);
+		if (hyp) {
+			of_node_put(hyp);
+			dt_ok = true;
+			break;
+		}
+	}
+	if (!dt_ok)
 		return -ENODEV;
 
 	gh_hypercall_hyp_identify(&gh_api);

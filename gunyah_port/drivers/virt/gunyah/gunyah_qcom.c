@@ -7,6 +7,7 @@
 #include <linux/bits.h>
 #include <linux/gunyah_rsc_mgr.h>
 #include <linux/module.h>
+#include <linux/of.h>
 #include <linux/qcom_scm.h>
 #include <linux/types.h>
 #include <linux/uuid.h>
@@ -142,33 +143,36 @@ static struct gh_rm_platform_ops qcom_scm_gh_rm_platform_ops = {
 	.post_mem_reclaim = qcom_scm_gh_rm_post_mem_reclaim,
 };
 
-/* {19bd54bd-0b37-571b-946f-609b54539de6} */
-static const uuid_t QCOM_EXT_UUID =
-	UUID_INIT(0x19bd54bd, 0x0b37, 0x571b, 0x94, 0x6f, 0x60, 0x9b, 0x54, 0x53, 0x9d, 0xe6);
-
-#define GH_QCOM_EXT_CALL_UUID_ID	ARM_SMCCC_CALL_VAL(ARM_SMCCC_FAST_CALL, ARM_SMCCC_SMC_32, \
-							   ARM_SMCCC_OWNER_VENDOR_HYP, 0x3f01)
-
-static bool gh_has_qcom_extensions(void)
+/*
+ * Detect Qualcomm Gunyah via DT only.
+ *
+ * Do NOT issue SMCCC Vendor-HYP UUID queries at boot: on some SM8550
+ * firmwares (incl. OnePlus 12R) those calls hard-reset the device and
+ * cause an immediate bootloop when this driver is built-in.
+ */
+static bool gh_has_qcom_gunyah_dt(void)
 {
-	struct arm_smccc_res res;
-	uuid_t uuid;
-	u32 *up;
+	static const char * const comps[] = {
+		"qcom,gunyah-hypervisor-1.0",
+		"qcom,gunyah-hypervisor",
+		"qcom,haven-hypervisor",
+	};
+	struct device_node *np;
+	int i;
 
-	arm_smccc_1_1_invoke(GH_QCOM_EXT_CALL_UUID_ID, &res);
-
-	up = (u32 *)&uuid.b[0];
-	up[0] = lower_32_bits(res.a0);
-	up[1] = lower_32_bits(res.a1);
-	up[2] = lower_32_bits(res.a2);
-	up[3] = lower_32_bits(res.a3);
-
-	return uuid_equal(&uuid, &QCOM_EXT_UUID);
+	for (i = 0; i < ARRAY_SIZE(comps); i++) {
+		np = of_find_compatible_node(NULL, NULL, comps[i]);
+		if (np) {
+			of_node_put(np);
+			return true;
+		}
+	}
+	return false;
 }
 
 static int __init qcom_gh_platform_hooks_register(void)
 {
-	if (!gh_has_qcom_extensions())
+	if (!gh_has_qcom_gunyah_dt())
 		return -ENODEV;
 
 	return gh_rm_register_platform_ops(&qcom_scm_gh_rm_platform_ops);
